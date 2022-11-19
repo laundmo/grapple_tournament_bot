@@ -18,7 +18,7 @@ COPY ./src ./src
 RUN touch -a -m ./src/main.rs
 RUN cargo build --release
 
-FROM debian:buster-slim
+FROM rust:1.65
 COPY --from=rust-builder /usr/src/gt_bot/target/release/gt_bot /usr/local/bin/
 WORKDIR /usr/local/bin
 CMD ["gt_bot"]
