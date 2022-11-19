@@ -18,23 +18,34 @@ async fn on_ready(
 ) -> Result<Data, Error> {
     println!("{} is up!", ready.user.name);
 
-    let appcommands = poise::builtins::create_application_commands(&framework.options().commands);
-    let commands = serenity::GuildId::set_application_commands(
-        &serenity::GuildId(
-            env::var("GUILD_ID")
-                .expect("Missing GUILD_ID")
-                .parse()
-                .expect("GUILD_ID should be a integer"),
-        ),
-        &ctx.http,
-        |commands| {
-            *commands = appcommands.clone();
-            commands
-        },
-    )
-    .await;
+    let commands_b = poise::builtins::create_application_commands(&framework.options().commands);
 
-    println!("Added the following slash commands: \n{:#?}", commands);
+    match env::var("GUILD_ID").ok().and_then(|e| e.parse().ok()) {
+        Some(guild_id) => {
+            let commands = serenity::GuildId::set_application_commands(
+                &serenity::GuildId(guild_id),
+                &ctx.http,
+                |commands| {
+                    *commands = commands_b.clone();
+                    commands
+                },
+            )
+            .await;
+            println!("Added the following slash commands: \n{:#?}", commands);
+        }
+        None => {
+            let global_command =
+                serenity::Command::set_global_application_commands(&ctx.http, |commands| {
+                    *commands = commands_b;
+                    commands
+                })
+                .await;
+            println!(
+                "Added the following guild slash commands: \n{:#?}",
+                global_command
+            );
+        }
+    }
 
     Ok(Data {})
 }
