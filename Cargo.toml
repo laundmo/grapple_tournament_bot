@@ -20,3 +20,5 @@ poise = "0.4.1"
 serde_json = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
 serde = "1.0.147"
+strum = "0.24"
+strum_macros = "0.24"

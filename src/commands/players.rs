@@ -1,9 +1,20 @@
 use crate::{Context, Error};
 use serde;
 
+#[derive(strum_macros::AsRefStr, serde::Deserialize, Debug)]
+enum Region {
+    AF,
+    AN,
+    AS,
+    EU,
+    NA,
+    OC,
+    SA,
+}
+
 #[derive(serde::Deserialize, Debug)]
 struct Users {
-    region: String,
+    region: Region,
     #[serde(alias = "onlinePlayerCount")]
     online_player_count: u32,
 }
@@ -25,7 +36,7 @@ pub async fn online(ctx: Context<'_>) -> Result<(), Error> {
                         "Region",
                         users
                             .iter()
-                            .map(|u| u.region.clone())
+                            .map(|u| u.region.as_ref().to_string())
                             .collect::<Vec<String>>()
                             .join("\n"),
                         true,
