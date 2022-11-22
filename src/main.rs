@@ -1,12 +1,33 @@
 use commands::players;
-use dotenv::dotenv;
+use dotenvy::dotenv;
+use miette::Diagnostic;
 use poise::serenity_prelude as serenity;
+use request_recurring::create_db_writer;
 use std::env;
+use thiserror::Error;
 
+mod api;
 mod commands;
+mod recurring;
+mod request_recurring;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+#[derive(Error, Diagnostic, Debug)]
+pub(crate) enum BotError {
+    #[error(transparent)]
+    #[diagnostic(code(gt_bot::api))]
+    SerenityErr(#[from] serenity::SerenityError),
+    #[error(transparent)]
+    #[diagnostic(code(gt_bot::api))]
+    ApiError(#[from] api::ApiError),
+    #[error(transparent)]
+    #[diagnostic(code(gt_bot::api))]
+    SqlxError(#[from] sqlx::Error),
+    #[error(transparent)]
+    #[diagnostic(code(gt_bot::api))]
+    SqlxMigrateError(#[from] sqlx::migrate::MigrateError),
+}
+
+type Context<'a> = poise::Context<'a, Data, BotError>;
 
 // User data, which is stored and accessible in all command invocations
 pub struct Data {}
@@ -14,8 +35,8 @@ pub struct Data {}
 async fn on_ready(
     ctx: &serenity::Context,
     ready: &serenity::Ready,
-    framework: &poise::Framework<Data, Error>,
-) -> Result<Data, Error> {
+    framework: &poise::Framework<Data, BotError>,
+) -> Result<Data, BotError> {
     println!("{} is up!", ready.user.name);
 
     let commands_b = poise::builtins::create_application_commands(&framework.options().commands);
@@ -50,17 +71,37 @@ async fn on_ready(
     Ok(Data {})
 }
 
+async fn error<'a>(error: poise::FrameworkError<'a, Data, BotError>) {
+    match error {
+        poise::FrameworkError::Command { error, ctx } => {
+            println!("{:?}", error);
+        }
+        poise::FrameworkError::CommandCheckFailed { error, ctx } => {
+            println!("{:?}", error);
+        }
+        _ => {
+            poise::builtins::on_error(error).await;
+        }
+    };
+}
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), BotError> {
     dotenv().ok();
+    let begin: i16 = 1234;
+    let bytes1 = begin.to_ne_bytes();
+    let bytes2 = begin.to_be_bytes();
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![players::online()],
+            on_error: |err| Box::pin(error(err)),
             ..Default::default()
         })
         .token(std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))
         .intents(serenity::GatewayIntents::non_privileged())
         .user_data_setup(|ctx, ready, framework| Box::pin(on_ready(ctx, ready, framework)));
-
+    create_db_writer().await?;
     framework.run().await.unwrap();
+    Ok(())
 }

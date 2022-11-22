@@ -5,3 +5,19 @@ services:
     build: .
     env_file: .env
     restart: unless-stopped
+    networks:
+      - internal
+  
+  db:
+    image: timescale/timescaledb-ha:pg14-latest
+    env_file: .env
+    networks:
+      - internal
+    ports:
+      - 127.0.0.1:${POSTGRES_PORT}:${POSTGRES_PORT}
+    volumes:
+      - ${DATA_DIR}/gt-bot-pg-data:/home/postgres/pgdata/data
+      - ./init_database.sh:/docker-entrypoint-initdb.d/init_database.sh
+
+networks:
+  internal:

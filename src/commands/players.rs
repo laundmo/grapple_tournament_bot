@@ -1,29 +1,9 @@
-use crate::{Context, Error};
-use serde;
-
-#[derive(strum_macros::AsRefStr, serde::Deserialize, Debug)]
-enum Region {
-    AF,
-    AN,
-    AS,
-    EU,
-    NA,
-    OC,
-    SA,
-}
-
-#[derive(serde::Deserialize, Debug)]
-struct Users {
-    region: Region,
-    #[serde(alias = "onlinePlayerCount")]
-    online_player_count: u32,
-}
+use crate::{api, BotError, Context};
+use miette::Result;
 
 #[poise::command(prefix_command, slash_command, aliases("players"))]
-pub async fn online(ctx: Context<'_>) -> Result<(), Error> {
-    let response =
-        reqwest::get("https://gvrfunctions.azurewebsites.net/api/listonlineplayers").await?;
-    let users: Vec<Users> = response.json().await?;
+pub(crate) async fn online(ctx: Context<'_>) -> Result<(), BotError> {
+    let users = api::get_users().await?;
     if users.is_empty() {
         ctx.send(|m| {
             m.embed(|b| {
