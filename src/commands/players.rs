@@ -1,6 +1,7 @@
 use crate::{api, BotError, Context};
 use miette::Result;
 
+/// List online players
 #[poise::command(prefix_command, slash_command, aliases("players"))]
 pub(crate) async fn online(ctx: Context<'_>) -> Result<(), BotError> {
     let users = api::get_users().await?;
