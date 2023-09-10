@@ -11,7 +11,7 @@ RUN cargo build --release
 
 # Copy source files over
 RUN rm -rf ./src
-COPY ./src ./src
+COPY . .
 
 # Use SQLX offline mode to build without a DB connection.
 ARG SQLX_OFFLINE=true

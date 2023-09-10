@@ -1,6 +1,7 @@
 use crate::{api, Context};
 use color_eyre::eyre::Result;
 
+/// List online players
 #[poise::command(prefix_command, slash_command, aliases("players"))]
 pub(crate) async fn online(ctx: Context<'_>) -> Result<()> {
     let users = api::get_users().await?;
