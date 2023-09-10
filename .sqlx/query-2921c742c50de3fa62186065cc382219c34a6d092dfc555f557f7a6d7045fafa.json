@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n\ttime_bucket('1 minute', f.\"time\") as \"time!\",\n\tsum(amount) as \"amount!\",\n    'None' as \"region!\"\nfrom\n\t(\n\tselect\n\t\ttime_bucket('1 minute', \"time\") as \"time\",\n\t\tmax(amount) as \"amount\"\n\tfrom\n\t\tpublic.playercounts\n\twhere\n\t\t\"time\" > now() - $1::interval\n\tgroup by\n\t\tcountry,\n\t\t\"time\"\n\torder by\n\t\ttime asc) as f\ngroup by\n\tf.\"time\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "amount!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "region!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Interval"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "2921c742c50de3fa62186065cc382219c34a6d092dfc555f557f7a6d7045fafa"
+}

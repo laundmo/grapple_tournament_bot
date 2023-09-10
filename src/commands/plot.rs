@@ -7,9 +7,18 @@ use image::ImageBuffer;
 use image::RgbImage;
 use itertools::Itertools;
 use plotters::prelude::*;
+use sqlx::postgres::types::PgInterval;
 
 #[poise::command(prefix_command, slash_command, aliases("graph"))]
-pub(crate) async fn plot(ctx: Context<'_>) -> Result<()> {
+pub(crate) async fn plot(
+    ctx: Context<'_>,
+    #[min = 1]
+    #[max = 18]
+    #[description = "how many days in the past to plot"]
+    days: Option<u8>,
+) -> Result<()> {
+    let days = days.unwrap_or(1);
+
     ctx.defer().await?;
     let data = ctx.data();
     let counts = sqlx::query_as!(
@@ -26,14 +35,19 @@ from
 	from
 		public.playercounts
 	where
-		"time" > now() - interval '1 days'
+		"time" > now() - $1::interval
 	group by
 		country,
 		"time"
 	order by
 		time asc) as f
 group by
-	f."time""#
+	f."time""#,
+        PgInterval {
+            days: days as i32,
+            months: 0,
+            microseconds: 0
+        }
     )
     .fetch_all(&data.pool)
     .await?;
@@ -61,12 +75,20 @@ group by
             BitMapBackend::with_buffer(&mut buf, (w as u32, h as u32)).into_drawing_area();
         root_area.fill(&WHITE)?;
         let mut chart = ChartBuilder::on(&root_area)
-            .x_label_area_size(40)
-            .y_label_area_size(40)
+            .x_label_area_size(50)
+            .y_label_area_size(50)
             .caption("Total Players", ("sans-serif", 30).into_font())
             .build_cartesian_2d(timerange, valrange)?;
 
-        chart.configure_mesh().light_line_style(WHITE).draw()?;
+        chart
+            .configure_mesh()
+            .light_line_style(WHITE)
+            .y_desc("Player Count")
+            .x_desc("Time")
+            .axis_desc_style(("sans-serif", 20).into_font())
+            .label_style(("sans-serif", 18).into_font())
+            .x_label_formatter(&|x| x.format("%Y-%m-%d %H:%M UTC").to_string())
+            .draw()?;
 
         chart.draw_series(LineSeries::new(
             counts.iter().map(|x| (x.time, x.amount)),

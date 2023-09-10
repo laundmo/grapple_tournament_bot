@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO public.playercounts (\"time\", country, amount) VALUES (Now(), (SELECT id FROM regions WHERE short = $1), $2);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e7734974f939c2306b7ffc6c105c190e1554f9b5bb024419e5531c00129b45fb"
+}

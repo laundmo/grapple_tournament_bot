@@ -8,7 +8,8 @@ pub(crate) async fn create_db_writer(pool: PgPool) -> Result<()> {
         async move {
             let users = api::get_users().await?;
             // skip writing db while testing
-            #[cfg(not(debug_assertions))]
+
+            #[cfg(any(not(debug_assertions), feature = "prepare"))]
             for user in users.iter() {
                 sqlx::query!(
                     r#"INSERT INTO public.playercounts ("time", country, amount) VALUES (Now(), (SELECT id FROM regions WHERE short = $1), $2);"#,
