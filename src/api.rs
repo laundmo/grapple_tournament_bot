@@ -1,10 +1,15 @@
-use miette::{Diagnostic, Result};
-use thiserror::Error;
+use std::str::FromStr;
 
-#[derive(strum_macros::AsRefStr, serde::Deserialize, Debug)]
+use color_eyre::eyre::Result;
+
+use chrono::{DateTime, FixedOffset, Utc};
+use strum_macros::EnumString;
+
+#[derive(strum_macros::AsRefStr, serde::Deserialize, Debug, EnumString)]
 pub(crate) enum Region {
-    AF, // Afghanistan
-    AN, // 
+    None,
+    AF,
+    AN,
     AS,
     EU,
     NA,
@@ -12,23 +17,30 @@ pub(crate) enum Region {
     SA,
 }
 
+impl From<String> for Region {
+    fn from(value: String) -> Self {
+        Region::from_str(&value).unwrap()
+    }
+}
+
+fn now_offset_utc() -> DateTime<FixedOffset> {
+    Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap())
+}
+
 #[derive(serde::Deserialize, Debug)]
-pub(crate) struct Users {
+pub(crate) struct RegionUsers {
+    #[serde(default = "now_offset_utc")]
+    pub(crate) time: DateTime<FixedOffset>,
+
     pub(crate) region: Region,
+
     #[serde(alias = "onlinePlayerCount")]
-    pub(crate) online_player_count: u32,
+    pub(crate) amount: i64,
 }
 
-#[derive(Error, Diagnostic, Debug)]
-pub(crate) enum ApiError {
-    #[error(transparent)]
-    #[diagnostic(code(gt_bot::api))]
-    ReqwestErr(#[from] reqwest::Error),
-}
-
-pub(crate) async fn get_users() -> Result<Vec<Users>, ApiError> {
+pub(crate) async fn get_users() -> Result<Vec<RegionUsers>> {
     let response =
         reqwest::get("https://gvrfunctions.azurewebsites.net/api/listonlineplayers").await?;
-    let users: Vec<Users> = response.json().await?;
+    let users: Vec<RegionUsers> = response.json().await?;
     Ok(users)
 }

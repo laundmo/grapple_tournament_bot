@@ -1,42 +1,28 @@
-use commands::players;
+use color_eyre::eyre::Result;
+use commands::{players, plot};
 use dotenvy::dotenv;
-use miette::Diagnostic;
 use poise::serenity_prelude as serenity;
 use request_recurring::create_db_writer;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::env;
-use thiserror::Error;
 
 mod api;
 mod commands;
 mod recurring;
 mod request_recurring;
 
-#[derive(Error, Diagnostic, Debug)]
-pub(crate) enum BotError {
-    #[error(transparent)]
-    #[diagnostic(code(gt_bot::api))]
-    SerenityErr(#[from] serenity::SerenityError),
-    #[error(transparent)]
-    #[diagnostic(code(gt_bot::api))]
-    ApiError(#[from] api::ApiError),
-    #[error(transparent)]
-    #[diagnostic(code(gt_bot::api))]
-    SqlxError(#[from] sqlx::Error),
-    #[error(transparent)]
-    #[diagnostic(code(gt_bot::api))]
-    SqlxMigrateError(#[from] sqlx::migrate::MigrateError),
-}
-
-type Context<'a> = poise::Context<'a, Data, BotError>;
+type Context<'a> = poise::Context<'a, Data, color_eyre::eyre::Error>;
 
 // User data, which is stored and accessible in all command invocations
-pub struct Data {}
+pub struct Data {
+    pool: PgPool,
+}
 
 async fn on_ready(
     ctx: &serenity::Context,
     ready: &serenity::Ready,
-    framework: &poise::Framework<Data, BotError>,
-) -> Result<Data, BotError> {
+    framework: &poise::Framework<Data, color_eyre::eyre::Error>,
+) -> Result<Data, color_eyre::eyre::Error> {
     println!("{} is up!", ready.user.name);
 
     let commands_b = poise::builtins::create_application_commands(&framework.options().commands);
@@ -68,10 +54,17 @@ async fn on_ready(
         }
     }
 
-    Ok(Data {})
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&std::env::var("DATABASE_URL").expect("missing DATABASE_URL"))
+        .await?;
+
+    create_db_writer(pool.clone()).await?;
+
+    Ok(Data { pool })
 }
 
-async fn error<'a>(error: poise::FrameworkError<'a, Data, BotError>) {
+async fn error<'a>(error: poise::FrameworkError<'a, Data, color_eyre::eyre::Error>) {
     match error {
         poise::FrameworkError::Command { error, ctx } => {
             println!("{:?}", error);
@@ -80,28 +73,25 @@ async fn error<'a>(error: poise::FrameworkError<'a, Data, BotError>) {
             println!("{:?}", error);
         }
         _ => {
-            poise::builtins::on_error(error).await;
+            let _ = poise::builtins::on_error(error).await;
         }
     };
 }
 
 #[tokio::main]
-async fn main() -> Result<(), BotError> {
+async fn main() -> Result<()> {
     dotenv().ok();
-    let begin: i16 = 1234;
-    let bytes1 = begin.to_ne_bytes();
-    let bytes2 = begin.to_be_bytes();
+    color_eyre::install()?;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![players::online()],
+            commands: vec![players::online(), plot::plot()],
             on_error: |err| Box::pin(error(err)),
             ..Default::default()
         })
         .token(std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))
         .intents(serenity::GatewayIntents::non_privileged())
-        .user_data_setup(|ctx, ready, framework| Box::pin(on_ready(ctx, ready, framework)));
-    create_db_writer().await?;
+        .setup(|ctx, ready, framework| Box::pin(on_ready(ctx, ready, framework)));
     framework.run().await.unwrap();
     Ok(())
 }

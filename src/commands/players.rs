@@ -1,8 +1,8 @@
-use crate::{api, BotError, Context};
-use miette::Result;
+use crate::{api, Context};
+use color_eyre::eyre::Result;
 
 #[poise::command(prefix_command, slash_command, aliases("players"))]
-pub(crate) async fn online(ctx: Context<'_>) -> Result<(), BotError> {
+pub(crate) async fn online(ctx: Context<'_>) -> Result<()> {
     let users = api::get_users().await?;
     if users.is_empty() {
         ctx.send(|m| {
@@ -18,7 +18,7 @@ pub(crate) async fn online(ctx: Context<'_>) -> Result<(), BotError> {
                 b.title("Grapple Tournament stats")
                     .description(format!(
                         "Total Players: {}",
-                        users.iter().map(|u| u.online_player_count).sum::<u32>()
+                        users.iter().map(|u| u.amount).sum::<i64>()
                     ))
                     .fields(vec![
                         (
@@ -34,7 +34,7 @@ pub(crate) async fn online(ctx: Context<'_>) -> Result<(), BotError> {
                             "Online",
                             users
                                 .iter()
-                                .map(|u| format!("{}", u.online_player_count))
+                                .map(|u| format!("{}", u.amount))
                                 .collect::<Vec<String>>()
                                 .join("\n"),
                             true,
