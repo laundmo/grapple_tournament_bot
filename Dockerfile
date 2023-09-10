@@ -1,4 +1,4 @@
-FROM rust:1.65 as rust-builder
+FROM rust:1.72 as rust-builder
 WORKDIR /usr/src/gt_bot
 
 # Copy cargo
