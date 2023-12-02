@@ -38,7 +38,7 @@ pub(crate) async fn create_leaderboard_updater(ctx: Arc<Context>, me: UserId) {
     let table_config = Settings::default()
         .with(Padding::new(0, 0, 0, 0))
         .with(Style::modern());
-    recurring_async_func(60.0, move || {
+    recurring_async_func(60.0 * 5.0, move || {
         let ctx = ctx.clone();
         let table_config = table_config.clone();
         async move {
