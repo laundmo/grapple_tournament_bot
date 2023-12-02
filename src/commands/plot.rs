@@ -53,6 +53,7 @@ group by
     .fetch_all(
         &data
             .pool
+            .clone()
             .expect("Pool should only be missing while testing"),
     )
     .await?;

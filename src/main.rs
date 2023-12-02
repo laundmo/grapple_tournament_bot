@@ -55,7 +55,7 @@ async fn on_ready(
             );
         }
     }
-    let pool = None;
+    let pool: Option<PgPoolOptions> = None;
     #[cfg(any(not(debug_assertions), feature = "prepare"))]
     let pool = Some(
         PgPoolOptions::new()
@@ -64,7 +64,7 @@ async fn on_ready(
             .await?,
     );
     #[cfg(any(not(debug_assertions), feature = "prepare"))]
-    create_db_writer(pool.expect("Pool should only be None when testing").clone()).await?;
+    create_db_writer(pool.clone().expect("Pool should only be None when testing")).await?;
 
     let arc_ctx = Arc::new(ctx.clone());
     create_leaderboard_updater(arc_ctx.clone(), ready.user.id).await;

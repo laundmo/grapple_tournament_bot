@@ -1,4 +1,4 @@
-FROM rust:1.72 as rust-builder
+FROM rust:1.74 as rust-builder
 WORKDIR /usr/src/gt_bot
 
 # Copy cargo
@@ -21,7 +21,7 @@ ARG SQLX_OFFLINE=true
 RUN touch -a -m ./src/main.rs
 RUN cargo build --release
 
-FROM rust:1.72
+FROM rust:1.74
 COPY --from=rust-builder /usr/src/gt_bot/target/release/gt_bot /usr/local/bin/
 WORKDIR /usr/local/bin
 CMD ["gt_bot"]
