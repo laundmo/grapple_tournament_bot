@@ -4,7 +4,9 @@ use dotenvy::dotenv;
 use poise::serenity_prelude as serenity;
 use request_recurring::create_db_writer;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::env;
+use std::{env, sync::Arc};
+
+use crate::request_recurring::create_leaderboard_updater;
 
 mod api;
 mod commands;
@@ -15,7 +17,7 @@ type Context<'a> = poise::Context<'a, Data, color_eyre::eyre::Error>;
 
 // User data, which is stored and accessible in all command invocations
 pub struct Data {
-    pool: PgPool,
+    pool: Option<PgPool>,
 }
 
 async fn on_ready(
@@ -53,18 +55,24 @@ async fn on_ready(
             );
         }
     }
+    let pool = None;
+    #[cfg(any(not(debug_assertions), feature = "prepare"))]
+    let pool = Some(
+        PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&std::env::var("DATABASE_URL").expect("missing DATABASE_URL"))
+            .await?,
+    );
+    #[cfg(any(not(debug_assertions), feature = "prepare"))]
+    create_db_writer(pool.expect("Pool should only be None when testing").clone()).await?;
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&std::env::var("DATABASE_URL").expect("missing DATABASE_URL"))
-        .await?;
-
-    create_db_writer(pool.clone()).await?;
+    let arc_ctx = Arc::new(ctx.clone());
+    create_leaderboard_updater(arc_ctx, ready.user.id).await;
 
     Ok(Data { pool })
 }
 
-async fn error<'a>(error: poise::FrameworkError<'a, Data, color_eyre::eyre::Error>) {
+async fn error(error: poise::FrameworkError<'_, Data, color_eyre::eyre::Error>) {
     match error {
         poise::FrameworkError::Command { error, ctx } => {
             println!("{:?}", error);
@@ -85,7 +93,11 @@ async fn main() -> Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![players::online(), plot::plot()],
+            commands: vec![
+                players::online(),
+                #[cfg(any(not(debug_assertions), feature = "prepare"))]
+                plot::plot(),
+            ],
             on_error: |err| Box::pin(error(err)),
             ..Default::default()
         })

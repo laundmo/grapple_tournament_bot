@@ -9,6 +9,7 @@ use itertools::Itertools;
 use plotters::prelude::*;
 use sqlx::postgres::types::PgInterval;
 
+#[cfg(any(not(debug_assertions), feature = "prepare"))]
 #[poise::command(prefix_command, slash_command, aliases("graph"))]
 pub(crate) async fn plot(
     ctx: Context<'_>,
@@ -49,7 +50,11 @@ group by
             microseconds: 0
         }
     )
-    .fetch_all(&data.pool)
+    .fetch_all(
+        &data
+            .pool
+            .expect("Pool should only be missing while testing"),
+    )
     .await?;
 
     let timeiter = counts.iter().map(|c| c.time);

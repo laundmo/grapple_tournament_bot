@@ -1,4 +1,4 @@
-use std::{future::Future, time::Duration};
+use std::{fmt::Debug, future::Future, time::Duration};
 use tokio::{task, time};
 
 use color_eyre::eyre::Result;
@@ -18,4 +18,9 @@ where
             }
         }
     });
+    println!(
+        "Added recurring {} every {}",
+        std::any::type_name::<T>(),
+        delay_s
+    );
 }

@@ -3,7 +3,9 @@ use std::str::FromStr;
 use color_eyre::eyre::Result;
 
 use chrono::{DateTime, FixedOffset, Utc};
+use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
+use tabled::Tabled;
 
 #[derive(strum_macros::AsRefStr, serde::Deserialize, Debug, EnumString)]
 pub(crate) enum Region {
@@ -39,8 +41,31 @@ pub(crate) struct RegionUsers {
 }
 
 pub(crate) async fn get_users() -> Result<Vec<RegionUsers>> {
-    let response =
-        reqwest::get("https://gvrfunctions.azurewebsites.net/api/listonlineplayers").await?;
-    let users: Vec<RegionUsers> = response.json().await?;
-    Ok(users)
+    Ok(
+        reqwest::get("https://gvrfunctions.azurewebsites.net/api/listonlineplayers")
+            .await?
+            .json()
+            .await?,
+    )
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Tabled)]
+pub(crate) struct ScoreboardEntry {
+    #[tabled(rename = "Name")]
+    #[serde(rename = "displayName")]
+    pub(crate) display_name: String,
+    #[tabled(skip)]
+    pub(crate) position: i64,
+    #[tabled(rename = "Score")]
+    #[serde(rename = "statValue")]
+    pub(crate) stat_value: i64,
+}
+
+pub(crate) async fn get_leaderboard() -> Result<Vec<ScoreboardEntry>> {
+    Ok(
+        reqwest::get("https://gvrfunctions.azurewebsites.net/api/getweeklyleaderboard")
+            .await?
+            .json()
+            .await?,
+    )
 }
