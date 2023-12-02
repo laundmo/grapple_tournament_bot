@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use color_eyre::eyre::Result;
 
@@ -19,6 +19,22 @@ pub(crate) enum Region {
     SA,
 }
 
+impl Display for Region {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Region::*;
+        f.write_str(match *self {
+            AF => "Africa",
+            AN => "Antarctica",
+            AS => "Asia",
+            EU => "Europe",
+            NA => "North-America",
+            OC => "Oceania",
+            SA => "South America",
+            None => "None",
+        })
+    }
+}
+
 impl From<String> for Region {
     fn from(value: String) -> Self {
         Region::from_str(&value).unwrap()
@@ -29,13 +45,16 @@ fn now_offset_utc() -> DateTime<FixedOffset> {
     Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap())
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug, Tabled)]
 pub(crate) struct RegionUsers {
+    #[tabled(skip)]
     #[serde(default = "now_offset_utc")]
     pub(crate) time: DateTime<FixedOffset>,
 
+    #[tabled(rename = "Region")]
     pub(crate) region: Region,
 
+    #[tabled(rename = "Players")]
     #[serde(alias = "onlinePlayerCount")]
     pub(crate) amount: i64,
 }

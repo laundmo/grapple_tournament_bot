@@ -6,7 +6,7 @@ use request_recurring::create_db_writer;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::{env, sync::Arc};
 
-use crate::request_recurring::create_leaderboard_updater;
+use crate::request_recurring::{create_leaderboard_updater, create_online_updater};
 
 mod api;
 mod commands;
@@ -67,7 +67,8 @@ async fn on_ready(
     create_db_writer(pool.expect("Pool should only be None when testing").clone()).await?;
 
     let arc_ctx = Arc::new(ctx.clone());
-    create_leaderboard_updater(arc_ctx, ready.user.id).await;
+    create_leaderboard_updater(arc_ctx.clone(), ready.user.id).await;
+    create_online_updater(arc_ctx, ready.user.id).await;
 
     Ok(Data { pool })
 }
